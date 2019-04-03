@@ -1,10 +1,10 @@
 ﻿//// TODOs
 ////
 //// Sort Button Functionality
-//// More Button Functionality
+//// Import Functionality
+//// Export Functionality
 //// Searchfield Functionality
 //// Refresh Button Functionality
-//// AddNewPlayerPrefsData Functionality
 
 using UnityEditor;
 using UnityEngine;
@@ -76,7 +76,14 @@ public class PlayerPrefsWindow : EditorWindow
     {
         if (GUILayout.Button("More", EditorStyles.toolbarDropDown, GUILayout.MaxWidth(50)))
         {
-            
+            GenericMenu menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Delete All"), false, DeleteAll);
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Import"), false, Import);
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Export"), false, Export);
+
+            menu.ShowAsContext();
         }
     }
 
@@ -133,6 +140,37 @@ public class PlayerPrefsWindow : EditorWindow
     // Add new PlayerPrefs and data comes from key, value and type fields on window
     void AddNewPlayerPrefsData()
     {
+        switch (playerPrefsTypes)
+        {
+            case TYPES.INTEGER:
+                PlayerPrefs.SetInt(newKey, int.Parse(newValue));
+                break;
+            case TYPES.FLOAT:
+                PlayerPrefs.SetFloat(newKey, float.Parse(newValue));
+                break;
+            case TYPES.STRING:
+                PlayerPrefs.SetString(newKey, newValue);
+                break;
+        }
+        newKey = "";
+        newValue = "";
+    }
 
+    // Call this function when Delete All button clicked
+    void DeleteAll()
+    {
+        PlayerPrefs.DeleteAll();
+    }
+
+    // Call this function when Import button clicked
+    void Import()
+    {
+        Debug.Log("Import PlayerPrefs");
+    }
+
+    // Call this function when Export button clicked
+    void Export()
+    {
+        Debug.Log("Export PlayerPrefs");
     }
 }
