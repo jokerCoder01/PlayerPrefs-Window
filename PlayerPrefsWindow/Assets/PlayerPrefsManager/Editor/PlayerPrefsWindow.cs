@@ -4,12 +4,12 @@
 //// Import Functionality
 //// Export Functionality
 //// Searchfield Functionality
-//// Save Current Functonality
+//// Save Current Functionality
 
 //// BUGFIX
 ////
-//// Fix creation of float or string PlayerPrefs
-//// Fix non-editable keys, values and types because of that doesn't have references
+//// Fix reading of float PlayerPrefs
+//// Fix non-editable types because of that doesn't have references
 //// Fix Delete All button that causes errors
 
 using Microsoft.Win32;
@@ -18,7 +18,7 @@ using UnityEngine;
 
 public class PlayerPrefsWindow : EditorWindow
 {
-    
+
     Texture refreshIcon;
     Texture plusIcon;
     Texture saveIcon;
@@ -30,6 +30,9 @@ public class PlayerPrefsWindow : EditorWindow
     string newKey;
     string newValue;
 
+    string[] keyList;
+    string[] valueList;
+    int[] typeList;
     Vector2 scrollView;
     RegistryKey registryKey;
     string companyName;
@@ -58,6 +61,9 @@ public class PlayerPrefsWindow : EditorWindow
         saveIcon = (Texture)AssetDatabase.LoadAssetAtPath("Assets/PlayerPrefsManager/Icons/save_Icon.png", typeof(Texture));
         resetIcon = (Texture)AssetDatabase.LoadAssetAtPath("Assets/PlayerPrefsManager/Icons/reset_Icon.png", typeof(Texture));
         deleteIcon = (Texture)AssetDatabase.LoadAssetAtPath("Assets/PlayerPrefsManager/Icons/delete_Icon.png", typeof(Texture));
+
+        GetAllPlayerPrefs();
+
     }
 
     // Called for rendering and handling GUI events
@@ -90,7 +96,7 @@ public class PlayerPrefsWindow : EditorWindow
     {
         if (GUILayout.Button("Sort", EditorStyles.toolbarPopup, GUILayout.MaxWidth(50)))
         {
-            
+
         }
     }
 
@@ -125,9 +131,9 @@ public class PlayerPrefsWindow : EditorWindow
     // Draws button to refresh all PlayerPrefs data
     void DrawRefreshButton()
     {
-        if(GUILayout.Button(new GUIContent(refreshIcon, "Refresh all PlayerPrefs data"), EditorStyles.toolbarButton, GUILayout.MaxWidth(30)))
+        if (GUILayout.Button(new GUIContent(refreshIcon, "Refresh all PlayerPrefs data"), EditorStyles.toolbarButton, GUILayout.MaxWidth(30)))
         {
-            DrawPlayerPrefs();
+            GetAllPlayerPrefs();
         }
     }
 
@@ -154,6 +160,7 @@ public class PlayerPrefsWindow : EditorWindow
         if (GUILayout.Button(new GUIContent(plusIcon, "Add new PlayerPrefs data"), GUILayout.MaxWidth(40), GUILayout.MaxHeight(40)))
         {
             AddNewPlayerPrefsData();
+            GetAllPlayerPrefs();
         }
         GUILayout.EndHorizontal();
 
@@ -169,6 +176,8 @@ public class PlayerPrefsWindow : EditorWindow
                 PlayerPrefs.SetInt(newKey, int.Parse(newValue));
                 break;
             case TYPES.FLOAT:
+                if (newValue.Contains("."))
+                    newValue = newValue.Replace('.', ',');
                 PlayerPrefs.SetFloat(newKey, float.Parse(newValue));
                 break;
             case TYPES.STRING:
@@ -179,7 +188,28 @@ public class PlayerPrefsWindow : EditorWindow
         newValue = "";
     }
 
-    // Draw Scrollable view for PlayerPrefs list
+    // Gets all PlayerPrefs data that includes keys, values and types and adds them to arrays 
+    void GetAllPlayerPrefs()
+    {
+        keyList = new string[registryKey.ValueCount];
+        valueList = new string[registryKey.ValueCount];
+        typeList = new int[registryKey.ValueCount];
+        int counter = 0;
+        foreach (string key in registryKey.GetValueNames())
+        {
+            string _key = key.Remove(key.LastIndexOf('_'));
+            keyList[counter] = _key;
+
+            if (registryKey.GetValueKind(key) == RegistryValueKind.Binary)
+                valueList[counter] = System.Text.Encoding.UTF8.GetString((byte[])registryKey.GetValue(key));
+            else
+                valueList[counter] = registryKey.GetValue(key).ToString();
+            
+            counter++;
+        }
+    }
+
+    // Draw Scrollable view for PlayerPrefs list and PlayerPrefs rows that gets data from registryKey
     void DrawPlayerPrefs()
     {
         GUILayout.BeginVertical();
@@ -191,38 +221,33 @@ public class PlayerPrefsWindow : EditorWindow
         GUILayout.Label("", EditorStyles.boldLabel, GUILayout.MinWidth(75), GUILayout.MaxWidth(75));
         GUILayout.EndHorizontal();
         scrollView = EditorGUILayout.BeginScrollView(scrollView);
-        foreach (string key in registryKey.GetValueNames())
+        for (int i = 0; i < keyList.Length; i++)
         {
-            string _key = key.Remove(key.LastIndexOf('_'));
-            DrawPlayerPrefsRow(_key, registryKey.GetValue(key).ToString(), TYPES.INTEGER);
+            GUILayout.BeginHorizontal();
+
+            keyList[i] = GUILayout.TextField(keyList[i], GUILayout.MinWidth(100), GUILayout.MaxWidth(200));
+            valueList[i] = GUILayout.TextField(valueList[i], GUILayout.MinWidth(100), GUILayout.MaxWidth(200));
+            TYPES type = TYPES.INTEGER;
+            type = (TYPES)EditorGUILayout.EnumPopup(type, GUILayout.MinWidth(100), GUILayout.MaxWidth(200));
+            if (GUILayout.Button(new GUIContent(saveIcon, "Save current data"), EditorStyles.miniButton, GUILayout.MaxWidth(25), GUILayout.MaxHeight(25)))
+            {
+
+            }
+            if (GUILayout.Button(new GUIContent(resetIcon, "Reset data to default"), EditorStyles.miniButton, GUILayout.MaxWidth(25), GUILayout.MaxHeight(25)))
+            {
+                GetAllPlayerPrefs();
+            }
+            if (GUILayout.Button(new GUIContent(deleteIcon, "Delete PlayerPrefs data"), EditorStyles.miniButton, GUILayout.MaxWidth(25), GUILayout.MaxHeight(25)))
+            {
+                PlayerPrefs.DeleteKey(keyList[i]);
+                GetAllPlayerPrefs();
+            }
+
+            GUILayout.EndHorizontal();
         }
         EditorGUILayout.EndScrollView();
 
         GUILayout.EndVertical();
-    }
-
-    // Draws PlayerPrefs row that gets data from registryKey
-    void DrawPlayerPrefsRow(string _key, string _value, TYPES _type)
-    {
-        GUILayout.BeginHorizontal();
-
-        _key = GUILayout.TextField(_key, GUILayout.MinWidth(100), GUILayout.MaxWidth(200));
-        _value = GUILayout.TextField(_value, GUILayout.MinWidth(100), GUILayout.MaxWidth(200));
-        _type = (TYPES)EditorGUILayout.EnumPopup(_type, GUILayout.MinWidth(100), GUILayout.MaxWidth(200));
-        if(GUILayout.Button(new GUIContent(saveIcon, "Save current data"), EditorStyles.miniButton, GUILayout.MaxWidth(25), GUILayout.MaxHeight(25)))
-        {
-            
-        }
-        if(GUILayout.Button(new GUIContent(resetIcon, "Reset data to default"), EditorStyles.miniButton, GUILayout.MaxWidth(25), GUILayout.MaxHeight(25)))
-        {
-            DrawPlayerPrefs();
-        }
-        if (GUILayout.Button(new GUIContent(deleteIcon, "Delete PlayerPrefs data"), EditorStyles.miniButton, GUILayout.MaxWidth(25), GUILayout.MaxHeight(25)))
-        {
-            PlayerPrefs.DeleteKey(_key);
-        }
-
-        GUILayout.EndHorizontal();
     }
 
     // Call this function when Delete All button clicked
